@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2018, The Monero Project
-// Copyright (c)      2018, The Loki Project
+// Copyright (c)      2018, The Koson Project
 // 
 // All rights reserved.
 // 
@@ -33,6 +33,7 @@
 using namespace epee;
 
 #include <atomic>
+#include <mutex>
 #include <boost/algorithm/string.hpp>
 #include "wipeable_string.h"
 #include "string_tools.h"
@@ -46,8 +47,8 @@ using namespace epee;
 #include "cryptonote_basic/verification_context.h"
 #include "cryptonote_core/service_node_deregister.h"
 
-#undef LOKI_DEFAULT_LOG_CATEGORY
-#define LOKI_DEFAULT_LOG_CATEGORY "cn"
+#undef KOSON_DEFAULT_LOG_CATEGORY
+#define KOSON_DEFAULT_LOG_CATEGORY "cn"
 
 #define ENCRYPTED_PAYMENT_ID_TAIL 0x8d
 
@@ -1057,7 +1058,7 @@ namespace cryptonote
     switch (decimal_point)
     {
       case 9:
-        return "loki";
+        return "koson";
       case 6:
         return "megarok";
       case 3:
@@ -1109,7 +1110,7 @@ namespace cryptonote
     return buf;
   }
   //---------------------------------------------------------------
-  char const *print_vote_verification_context(vote_verification_context const &vvc, loki::service_node_deregister::vote const *vote)
+  char const *print_vote_verification_context(vote_verification_context const &vvc, koson::service_node_deregister::vote const *vote)
   {
       static char buf[1024];
       buf[0] = 0;
@@ -1392,7 +1393,15 @@ namespace cryptonote
   bool get_block_longhash(const block& b, crypto::hash& res, uint64_t height)
   {
     blobdata bd = get_block_hashing_blob(b);
-    const int cn_variant = b.major_version >= 7 ? b.major_version - 6 : 0;
+        int cn_variant;
+	if (b.major_version < 7)
+	{
+		cn_variant = 0;
+	}
+	else
+	{
+		cn_variant = 2;
+	}
     crypto::cn_slow_hash(bd.data(), bd.size(), res, cn_variant);
     return true;
   }
