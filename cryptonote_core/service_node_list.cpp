@@ -1,4 +1,4 @@
-// Copyright (c)      2018, The Loki Project
+// Copyright (c)      2018, The Koson Project
 //
 // All rights reserved.
 //
@@ -43,8 +43,8 @@
 #include "service_node_list.h"
 #include "service_node_rules.h"
 
-#undef LOKI_DEFAULT_LOG_CATEGORY
-#define LOKI_DEFAULT_LOG_CATEGORY "service_nodes"
+#undef KOSON_DEFAULT_LOG_CATEGORY
+#define KOSON_DEFAULT_LOG_CATEGORY "service_nodes"
 
 namespace service_nodes
 {
@@ -155,7 +155,7 @@ namespace service_nodes
     const auto &it = m_quorum_states.find(height);
     if (it == m_quorum_states.end())
     {
-      // TODO(loki): Not being able to find the quorum is going to be a fatal error.
+      // TODO(koson): Not being able to find the quorum is going to be a fatal error.
     }
     else
     {
@@ -304,7 +304,7 @@ namespace service_nodes
 
     if (!state)
     {
-      // TODO(loki): Not being able to find a quorum is fatal! We want better caching abilities.
+      // TODO(koson): Not being able to find a quorum is fatal! We want better caching abilities.
       LOG_ERROR("Quorum state for height: " << deregister.block_height << ", was not stored by the daemon");
       return false;
     }
@@ -378,7 +378,7 @@ namespace service_nodes
     auto all_swarms = get_all_swarms(swarm_to_snodes);
     std::sort(all_swarms.begin(), all_swarms.end());
 
-    loki_shuffle(all_swarms, seed);
+    koson_shuffle(all_swarms, seed);
 
     const auto cmp_swarm_sizes =
       [&swarm_to_snodes](swarm_id_t lhs, swarm_id_t rhs) {
@@ -455,7 +455,7 @@ namespace service_nodes
       /// shuffle the queue and select MAX_SWARM_SIZE last elements
       const auto new_swarm_id = get_new_swarm_id(mersenne_twister, all_swarms);
 
-      loki_shuffle(swarm_buffer, seed + new_swarm_id);
+      koson_shuffle(swarm_buffer, seed + new_swarm_id);
 
       std::vector<crypto::public_key> selected_snodes;
 
@@ -853,7 +853,7 @@ namespace service_nodes
       update_swarms(block_height);
     }
 
-    const size_t QUORUM_LIFETIME         = (6 * loki::service_node_deregister::DEREGISTER_LIFETIME_BY_HEIGHT);
+    const size_t QUORUM_LIFETIME         = (6 * koson::service_node_deregister::DEREGISTER_LIFETIME_BY_HEIGHT);
     // save six times the quorum lifetime, to be sure. also to help with debugging.
     const size_t cache_state_from_height = (block_height < QUORUM_LIFETIME) ? 0 : block_height - QUORUM_LIFETIME;
 
@@ -1003,7 +1003,7 @@ namespace service_nodes
     if (hard_fork_version < 9)
       return true;
 
-    // NOTE(loki): Service node reward distribution is calculated from the
+    // NOTE(koson): Service node reward distribution is calculated from the
     // original amount, i.e. 50% of the original base reward goes to service
     // nodes not 50% of the reward after removing the governance component (the
     // adjusted base reward post hardfork 10).
@@ -1058,7 +1058,7 @@ namespace service_nodes
   }
 
   template<typename T>
-  void loki_shuffle(std::vector<T>& a, uint64_t seed)
+  void koson_shuffle(std::vector<T>& a, uint64_t seed)
   {
     if (a.size() <= 1) return;
     std::mt19937_64 mersenne_twister(seed);
@@ -1089,7 +1089,7 @@ namespace service_nodes
       uint64_t seed = 0;
       std::memcpy(&seed, block_hash.data, std::min(sizeof(seed), sizeof(block_hash.data)));
 
-      loki_shuffle(pub_keys_indexes, seed);
+      koson_shuffle(pub_keys_indexes, seed);
     }
 
     // Assign indexes from shuffled list into quorum and list of nodes to test
@@ -1342,13 +1342,7 @@ namespace service_nodes
     m_height = hardfork_9_from_height;
   }
 
-  bool convert_registration_args(cryptonote::network_type nettype,
-                                 std::vector<std::string> args,
-                                 std::vector<cryptonote::account_public_address>& addresses,
-                                 std::vector<uint64_t>& portions,
-                                 uint64_t& portions_for_operator,
-                                 bool& autostake,
-                                 boost::optional<std::string&> err_msg)
+  bool convert_registration_args(cryptonote::network_type nettype, std::vector<std::string> args, std::vector<cryptonote::account_public_address>& addresses, std::vector<uint64_t>& portions, uint64_t& portions_for_operator, bool& autostake)
   {
     autostake = false;
     if (!args.empty() && args[0] == "auto")
@@ -1364,8 +1358,6 @@ namespace service_nodes
     }
     if ((args.size()-1)/ 2 > MAX_NUMBER_OF_CONTRIBUTORS)
     {
-      std::string msg = tr("Exceeds the maximum number of contributors, which is ") + std::to_string(MAX_NUMBER_OF_CONTRIBUTORS);
-      if (err_msg) *err_msg = msg;
       MERROR(tr("Exceeds the maximum number of contributors, which is ") << MAX_NUMBER_OF_CONTRIBUTORS);
       return false;
     }
@@ -1391,9 +1383,7 @@ namespace service_nodes
       cryptonote::address_parse_info info;
       if (!cryptonote::get_account_address_from_str(info, nettype, args[i]))
       {
-        std::string msg = tr("failed to parse address: ") + args[i];
-        if (err_msg) *err_msg = msg;
-        MERROR(msg);
+        MERROR(tr("failed to parse address"));
         return false;
       }
 
@@ -1405,9 +1395,7 @@ namespace service_nodes
 
       if (info.is_subaddress)
       {
-        std::string msg = tr("can't use a subaddress for staking tx");
-        if (err_msg) *err_msg = msg;
-        MERROR(msg);
+        MERROR(tr("can't use a subaddress for staking tx"));
         return false;
       }
 
@@ -1419,7 +1407,6 @@ namespace service_nodes
         uint64_t min_portions = std::min(portions_left, MIN_PORTIONS);
         if (num_portions < min_portions || num_portions > portions_left)
         {
-          if (err_msg) *err_msg = "invalid amount for contributor " + args[i];
           MERROR(tr("Invalid portion amount: ") << args[i+1] << tr(". ") << tr("The contributors must each have at least 25%, except for the last contributor which may have the remaining amount"));
           return false;
         }
@@ -1428,7 +1415,6 @@ namespace service_nodes
       }
       catch (const std::exception &e)
       {
-        if (err_msg) *err_msg = "invalid amount for contributor " + args[i];
         MERROR(tr("Invalid portion amount: ") << args[i+1] << tr(". ") << tr("The contributors must each have at least 25%, except for the last contributor which may have the remaining amount"));
         return false;
       }
@@ -1437,14 +1423,14 @@ namespace service_nodes
   }
 
   bool make_registration_cmd(cryptonote::network_type nettype, const std::vector<std::string> args, const crypto::public_key& service_node_pubkey,
-                             const crypto::secret_key service_node_key, std::string &cmd, bool make_friendly, boost::optional<std::string&> err_msg)
+                             const crypto::secret_key service_node_key, std::string &cmd, bool make_friendly)
   {
 
     std::vector<cryptonote::account_public_address> addresses;
     std::vector<uint64_t> portions;
     uint64_t operator_portions;
     bool autostake;
-    if (!convert_registration_args(nettype, args, addresses, portions, operator_portions, autostake, err_msg))
+    if (!convert_registration_args(nettype, args, addresses, portions, operator_portions, autostake))
     {
       MERROR(tr("Could not convert registration args"));
       return false;
