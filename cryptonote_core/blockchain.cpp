@@ -856,15 +856,8 @@ difficulty_type Blockchain::get_difficulty_for_next_block()
     m_difficulties = difficulties;
   }
   size_t target = get_difficulty_target();
-  difficulty_type diff;
-  if (version < 8)
-  {
-	diff = next_difficulty_v2(timestamps, difficulties, target);
-  }
-  else
-  {
-	diff = next_difficulty_v3(timestamps, difficulties, target);
-  }
+
+difficulty_type diff = next_difficulty_v2(timestamps, difficulties, target, version <= cryptonote::network_version_9_service_nodes);
 
   CRITICAL_REGION_LOCAL1(m_difficulty_lock);
   m_difficulty_for_next_block_top_hash = top_hash;
@@ -1093,14 +1086,8 @@ difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std:
   size_t target = DIFFICULTY_TARGET_V2;
 
   // calculate the difficulty target for the block and return it
- if (get_current_hard_fork_version() < cryptonote::network_version_8)
- {
-	return next_difficulty_v2(timestamps, cumulative_difficulties, target);
- }
- else
- {
-	 return next_difficulty_v3(timestamps, cumulative_difficulties, target);
- }
+
+return next_difficulty_v2(timestamps, cumulative_difficulties, target, get_current_hard_fork_version() <= cryptonote::network_version_9_service_nodes);
 }
 
 //------------------------------------------------------------------
